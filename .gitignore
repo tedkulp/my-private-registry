@@ -1,0 +1,7 @@
+node_modules
+blobs/**
+manifests/**
+uploads/**
+!blobs/.gitkeep
+!manifests/.gitkeep
+!uploads/.gitkeep
