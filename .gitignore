@@ -5,3 +5,5 @@ uploads/**
 !blobs/.gitkeep
 !manifests/.gitkeep
 !uploads/.gitkeep
+cert.pem
+key.pem
