@@ -20,6 +20,11 @@ app.use(bodyParser.raw({
     type: () => { return true; }
 }));
 
+app.use((req, res, next) => {
+    res.set('Docker-Distribution-API-Version', 'registry/2.0');
+    next();
+});
+
 app.all('/v1/*', (req, res) => {
     console.log(req.url, req.method);
     return res.status(404).end();
@@ -27,7 +32,7 @@ app.all('/v1/*', (req, res) => {
 
 app.get('/v2/', (req, res) => {
     console.log(req.url, req.method);
-    return res.append('Docker-Distribution-API-Version', 'registry/2.0').status(200).end();
+    return res.status(200).end();
 });
 
 app.get('/v2/_catalog', (req, res) => {
@@ -51,7 +56,7 @@ app.get('/v2/:repository/tags/list', (req, res) => {
         }
 
         const tags = _.chain(files)
-            .map((file) => { return file.substring(3); })
+            .map(file => file.substring(3))
             .uniq()
             .value()
 
@@ -67,11 +72,9 @@ app.head('/v2/:repository/blobs/:digest', (req, res) => {
     fs.stat('./blobs/' + req.params['digest'], (err, stats) => {
         if (err) {
             return res
-                .append('Docker-Distribution-API-Version', 'registry/2.0')
                 .status(404).end();
         } else {
             return res
-                .append('Docker-Distribution-API-Version', 'registry/2.0')
                 .append('Content-Length', stats.size)
                 .append('Docker-Content-Digest', req.params['digest'])
                 .status(200).end();
@@ -85,11 +88,9 @@ app.get('/v2/:repository/blobs/:digest', (req, res) => {
     fs.stat(filename, (err, stats) => {
         if (err) {
             return res
-                .append('Docker-Distribution-API-Version', 'registry/2.0')
                 .status(404).end();
         } else {
             return res
-                .append('Docker-Distribution-API-Version', 'registry/2.0')
                 .append('Content-Length', stats.size)
                 .append('Docker-Content-Digest', req.params['digest'])
                 .status(200).sendFile(filename, { root: __dirname });
@@ -103,7 +104,6 @@ app.post('/v2/:repository/blobs/uploads/', (req, res) => {
     var newUuid = uuid.v4();
     uuids.push(newUuid);
     return res
-        .append('Docker-Distribution-API-Version', 'registry/2.0')
         .append('Location', '/v2/' + req.params['repository'] + '/blobs/uploads/' + newUuid)
         .append('Docker-Upload-UUID', newUuid)
         .append('Range', '0-0')
@@ -119,7 +119,6 @@ app.patch('/v2/:repository/blobs/uploads/:uuid', (req, res) => {
         .append('Range', '0-' + req.body.length)
         .append('Content-Length', 0)
         .append('Docker-Upload-UUID', req.params['uuid'])
-        .append('Docker-Distribution-API-Version', 'registry/2.0')
         .status(202).end();
 });
 
@@ -139,7 +138,6 @@ app.put('/v2/:repository/blobs/uploads/:uuid', (req, res) => {
                     res
                         .append('Location', '/v2/' + req.params['repository'] + '/blobs/' + req.query['digest'])
                         .append('Content-Length', 0)
-                        .append('Docker-Distribution-API-Version', 'registry/2.0')
                         .append('Docker-Content-Digest', req.query['digest'])
                         .status(201).end();
                 });
