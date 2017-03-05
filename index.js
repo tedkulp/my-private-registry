@@ -1,5 +1,6 @@
 const express = require('express');
 const fs = require('fs');
+const http = require('http');
 const https = require('https');
 const uuid = require('uuid');
 const bodyParser = require('body-parser');
@@ -7,11 +8,57 @@ const crypto = require('crypto');
 const _ = require('lodash');
 const app = express();
 
-https.createServer({
-    key: fs.readFileSync('key.pem'),
-    cert: fs.readFileSync('cert.pem'),
-    passphrase: '1234'
-}, app).listen(3000);
+const args = require('yargs')
+    .usage('Usage: $0 [options]')
+    .version('Version 0.1')
+
+    .describe('http', 'Use http instead of https')
+    .boolean('http')
+    .default('http', false)
+
+    .describe('https', 'Use https')
+    .boolean('https')
+    .default('https', true)
+
+    .describe('cert', 'Filename of cert for SSL server')
+    .default('cert', 'cert.pem')
+    .alias('c', 'cert')
+
+    .describe('key', 'Filename of key for SSL server')
+    .default('key', 'key.pem')
+    .alias('k', 'key')
+
+    .describe('passphrase', 'Passphrase for the SSL cert')
+    .alias('P', 'passphrase')
+
+    .describe('port', 'Port to serve on')
+    .number('port')
+    .default('port', 3000)
+    .alias('p', 'port')
+
+    .help('help')
+    .alias('?', 'help')
+    .argv;
+
+if (args.http) {
+    http.createServer(app).listen(args.port);
+    console.log('Started http server on port ' + args.port);
+} else if (args.https) {
+    var serverArgs = {
+        key: fs.readFileSync(args.key),
+        cert: fs.readFileSync(args.cert)
+    };
+
+    if (args.passphrase) {
+        serverArgs.passphrase = args.passphrase;
+    };
+
+    https.createServer(serverArgs, app).listen(args.port);
+    console.log('Started https server on port ' + args.port);
+} else {
+    console.log('Both http and https are disabled. Exiting.');
+    process.exit(1);
+}
 
 var jsonParser = bodyParser.json()
 app.use(bodyParser.raw({
@@ -220,7 +267,3 @@ app.all('*', (req, res) => {
     console.log(req.url, req.method);
     return res.status(200).end();
 });
-
-//app.listen(3000, () => {
- //   console.log('Example app listening on port 3000!');
-//});
