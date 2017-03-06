@@ -7,6 +7,7 @@ const bodyParser = require('body-parser');
 const crypto = require('crypto');
 const _ = require('lodash');
 const app = express();
+const registry = require('./lib/file-registry');
 
 const args = require('yargs')
     .usage('Usage: $0 [options]')
@@ -84,70 +85,67 @@ app.get('/v2/', (req, res) => {
 
 app.get('/v2/_catalog', (req, res) => {
     console.log(req.url, req.method, req.headers);
-    fs.readdir('./manifests', (err, files) => {
-        if (err) {
-            return res.status(404).end();
-        }
 
-        return res.status(200).json({
-            'repositories': files
+    registry.getRepositories()
+        .then(files => {
+            res.status(200).json({
+                'repositories': files
+            });
+        })
+        .catch(err => {
+            res.status(404).end();
         });
-    });
 });
 
 app.get('/v2/:repository/tags/list', (req, res) => {
     console.log(req.url, req.method, req.headers);
-    fs.readdir('./manifests/' + req.params['repository'], (err, files) => {
-        if (err) {
-            return res.status(404).end();
-        }
 
-        const tags = _.chain(files)
-            .map(file => file.substring(3))
-            .uniq()
-            .value()
-
-        return res.status(200).json({
-            'name': req.params['repository'],
-            'tags': tags
+    registry.getTagsInRepository(req.params['repository'])
+        .then(tags => {
+            res.status(200).json({
+                'name': req.params['repository'],
+                'tags': tags
+            });
+        })
+        .catch(err => {
+            res.status(404).end();
         });
-    });
 });
 
 app.head('/v2/:repository/blobs/:digest', (req, res) => {
     console.log(req.url, req.method, req.headers);
-    fs.stat('./blobs/' + req.params['digest'], (err, stats) => {
-        if (err) {
-            return res
-                .status(404).end();
-        } else {
-            return res
-                .append('Content-Length', stats.size)
+
+    registry.getBlobDetails(req.params['digest'])
+        .then(details => {
+            res
+                .append('Content-Length', details.stats.size)
                 .append('Docker-Content-Digest', req.params['digest'])
                 .status(200).end();
-        }
-    });
+        })
+        .catch(err => {
+            res.status(404).end();
+        });
 });
 
 app.get('/v2/:repository/blobs/:digest', (req, res) => {
     console.log(req.url, req.method, req.headers);
-    var filename = './blobs/' + req.params['digest'];
-    fs.stat(filename, (err, stats) => {
-        if (err) {
-            return res
-                .status(404).end();
-        } else {
-            return res
-                .append('Content-Length', stats.size)
+
+    registry.getBlobDetails(req.params['digest'])
+        .then(details => {
+            res
+                .append('Content-Length', details.stats.size)
                 .append('Docker-Content-Digest', req.params['digest'])
-                .status(200).sendFile(filename, { root: __dirname });
-        }
-    });
+                .status(200).sendFile(details.filename, { root: __dirname });
+        })
+        .catch(err => {
+            res.status(404).end();
+        });
 });
 
 var uuids = [];
 app.post('/v2/:repository/blobs/uploads/', (req, res) => {
     console.log(req.url, req.method, req.headers);
+
     var newUuid = uuid.v4();
     uuids.push(newUuid);
     return res
@@ -160,6 +158,7 @@ app.post('/v2/:repository/blobs/uploads/', (req, res) => {
 
 app.patch('/v2/:repository/blobs/uploads/:uuid', (req, res) => {
     console.log(req.url, req.method, req.headers);
+
     fs.writeFile('./uploads/' + req.params['uuid'], req.body);
     return res
         .append('Location', '/v2/' + req.params['repository'] + '/blobs/uploads/' + req.params['uuid'])
@@ -171,6 +170,7 @@ app.patch('/v2/:repository/blobs/uploads/:uuid', (req, res) => {
 
 app.put('/v2/:repository/blobs/uploads/:uuid', (req, res) => {
     console.log(req.url, req.method, req.headers, req.query);
+
     const filename = './uploads/' + req.params['uuid'];
     const input = fs.createReadStream(filename);
     const hash = crypto.createHash('sha256');
@@ -196,33 +196,16 @@ app.put('/v2/:repository/blobs/uploads/:uuid', (req, res) => {
 app.get('/v2/:repository/manifests/:reference', (req, res) => {
     console.log(req.url, req.method, req.headers, req.query);
 
-    // accept: 'application/vnd.docker.distribution.manifest.v1+prettyjws, application/json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.docker.distribution.manifest.list.v2+json',
-
-    // TODO: v1 seems to be the only one that works. Why?
-    var ident = 'v1';
-    var filename = './manifests/' + req.params['repository'] + '/' + ident + '-' + req.params['reference'];
-    var type = 'application/vnd.docker.distribution.manifest.v1+prettyjws';
-
-    // If the v1 exists, send it. If not look for v2 instead
-    if (!fs.existsSync(filename)) {
-        ident = 'v2';
-        filename = './manifests/' + req.params['repository'] + '/' + ident + '-' + req.params['reference'];
-        type = 'application/vnd.docker.distribution.manifest.v2+json';
-    }
-
-    const input = fs.createReadStream(filename);
-    const hash = crypto.createHash('sha256');
-    input.on('readable', () => {
-        const data = input.read();
-        if (data) {
-            hash.update(data);
-        } else {
+    registry.getManifestDetails(req.params['repository'], req.params['reference'])
+        .then(details => {
             return res
-                .append('Content-Type', type)
-                .append('Docker-Content-Digest', 'sha256:' + hash.digest('hex'))
-                .status(200).sendFile(filename, { root: __dirname });
-        }
-    });
+                .append('Content-Type', details.type)
+                .append('Docker-Content-Digest', 'sha256:' + details.digest)
+                .status(200).sendFile(details.filename, { root: __dirname });
+        })
+        .catch(err => {
+            res.status(404).end();
+        });
 });
 
 app.put('/v2/:repository/manifests/:reference', jsonParser, (req, res) => {
