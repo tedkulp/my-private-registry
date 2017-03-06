@@ -2,7 +2,6 @@ const express = require('express');
 const fs = require('fs');
 const http = require('http');
 const https = require('https');
-const uuid = require('uuid');
 const bodyParser = require('body-parser');
 const crypto = require('crypto');
 const _ = require('lodash');
@@ -17,6 +16,7 @@ const args = require('yargs')
   .default('http', false)
   .describe('https', 'Use https')
   .boolean('https')
+
   .default('https', true)
   .describe('cert', 'Filename of cert for SSL server')
   .default('cert', 'cert.pem')
@@ -54,11 +54,6 @@ if (args.http) {
 }
 
 var jsonParser = bodyParser.json()
-app.use(bodyParser.raw({
-  inflate: true,
-  limit: '1000mb',
-  type: () => { return true; }
-}));
 
 app.use((req, res, next) => {
   res.set('Docker-Distribution-API-Version', 'registry/2.0');
@@ -134,12 +129,12 @@ app.get('/v2/:repository/blobs/:digest', (req, res) => {
     });
 });
 
-var uuids = [];
+var uuids = {};
 app.post('/v2/:repository/blobs/uploads/', (req, res) => {
   console.log(req.url, req.method, req.headers);
 
-  var newUuid = uuid.v4();
-  uuids.push(newUuid);
+  var newUuid = registry.getNewUploadId();
+  uuids[newUuid] = 0; // Current endpoint in bytes
   return res
     .append('Location', '/v2/' + req.params['repository'] + '/blobs/uploads/' + newUuid)
     .append('Docker-Upload-UUID', newUuid)
@@ -151,38 +146,43 @@ app.post('/v2/:repository/blobs/uploads/', (req, res) => {
 app.patch('/v2/:repository/blobs/uploads/:uuid', (req, res) => {
   console.log(req.url, req.method, req.headers);
 
-  fs.writeFile('./uploads/' + req.params['uuid'], req.body);
-  return res
-    .append('Location', '/v2/' + req.params['repository'] + '/blobs/uploads/' + req.params['uuid'])
-    .append('Range', '0-' + req.body.length)
-    .append('Content-Length', 0)
-    .append('Docker-Upload-UUID', req.params['uuid'])
-    .status(202).end();
+  const startPoint = uuids[req.params['uuid']] || 0;
+  var length = 0;
+
+  // TODO: Some way to make this more promise based? Streams to promises or something?
+  // TODO: Error handling?
+  // TODO: Haven't actually seen this use multiple chunks yet. It *should* be written
+  //       to handle it, but it's untested thus far.
+  const stream = registry.getUploadFileStream(req.params['repository'], req.params['uuid']);
+
+  req.on('data', function (data) {
+    length += data.length;
+    stream.write(data);
+  });
+
+  req.on('end', function () {
+    stream.end();
+    uuids[req.params['uuid']] += length;
+    return res
+      .append('Location', '/v2/' + req.params['repository'] + '/blobs/uploads/' + req.params['uuid'])
+      .append('Range', startPoint + '-' + uuids[req.params['uuid']])
+      .append('Content-Length', 0)
+      .append('Docker-Upload-UUID', req.params['uuid'])
+      .status(202).end();
+  });
 });
 
 app.put('/v2/:repository/blobs/uploads/:uuid', (req, res) => {
   console.log(req.url, req.method, req.headers, req.query);
 
-  const filename = './uploads/' + req.params['uuid'];
-  const input = fs.createReadStream(filename);
-  const hash = crypto.createHash('sha256');
-  input.on('readable', () => {
-    const data = input.read();
-    if (data) {
-      hash.update(data);
-    } else {
-      var hex = hash.digest('hex');
-      if ('sha256:' + hex == req.query['digest']) {
-        fs.rename(filename, './blobs/' + req.query['digest'], () => {
-          res
-            .append('Location', '/v2/' + req.params['repository'] + '/blobs/' + req.query['digest'])
-            .append('Content-Length', 0)
-            .append('Docker-Content-Digest', req.query['digest'])
-            .status(201).end();
-        });
-      }
-    }
-  });
+  registry.finalizeUpload(req.params['repository'], req.params['uuid'], req.query['digest'])
+    .then(details => {
+      res
+        .append('Location', '/v2/' + details.repository + '/blobs/' + details.digest)
+        .append('Content-Length', 0)
+        .append('Docker-Content-Digest', details.digest)
+        .status(201).end();
+    });
 });
 
 app.get('/v2/:repository/manifests/:reference', (req, res) => {
@@ -200,41 +200,37 @@ app.get('/v2/:repository/manifests/:reference', (req, res) => {
     });
 });
 
-app.put('/v2/:repository/manifests/:reference', jsonParser, (req, res) => {
+app.put('/v2/:repository/manifests/:reference', (req, res) => {
   console.log(req.url, req.method, req.headers, req.query);
 
-  if (!fs.existsSync('./manifests/' + req.params['repository']))
-    fs.mkdirSync('./manifests/' + req.params['repository']);
-
-  var ident = 'v1';
+  // TODO: This version switching could use some more love
+  var version = '1';
 
   switch (req.headers['content-type']) {
   case 'application/vnd.docker.distribution.manifest.v2+json':
-    ident = 'v2';
+    version = '2';
     break;
   case 'application/vnd.docker.distribution.manifest.v1+prettyjws':
   default:
     break;
   }
 
-  const filename = './manifests/' + req.params['repository'] + '/' + ident + '-' + req.params['reference'];
+  var stream = registry.getUploadManifestStream(req.params['repository'], version, req.params['reference']);
 
-  fs.writeFile(filename, req.body);
+  req.on('data', function (data) {
+    stream.write(data);
+  });
 
-  const input = fs.createReadStream(filename);
-  const hash = crypto.createHash('sha256');
-  input.on('readable', () => {
-    const data = input.read();
-    if (data) {
-      hash.update(data);
-    } else {
-      var hex = hash.digest('hex');
-      return res
-        .append('Location', '/v2/' + req.params['repository'] + '/manifests/' + req.params['reference'])
-        .append('Content-Length', 0)
-        .append('Docker-Content-Digest', 'sha256:' + hex)
-        .status(201).end();
-    }
+  req.on('end', function () {
+    stream.end();
+    registry.getManifestDetails(req.params['repository'], version, req.params['reference'])
+      .then(details => {
+        return res
+          .append('Location', '/v2/' + req.params['repository'] + '/manifests/' + req.params['reference'])
+          .append('Content-Length', 0)
+          .append('Docker-Content-Digest', 'sha256:' + details.digest)
+          .status(201).end();
+      });
   });
 });
 
