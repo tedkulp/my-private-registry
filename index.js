@@ -2,7 +2,6 @@ const express = require('express');
 const fs = require('fs');
 const http = require('http');
 const https = require('https');
-const bodyParser = require('body-parser');
 const crypto = require('crypto');
 const _ = require('lodash');
 const app = express();
@@ -52,8 +51,6 @@ if (args.http) {
   console.log('Both http and https are disabled. Exiting.');
   process.exit(1);
 }
-
-var jsonParser = bodyParser.json()
 
 app.use((req, res, next) => {
   res.set('Docker-Distribution-API-Version', 'registry/2.0');
