@@ -28,6 +28,7 @@ const args = require('yargs')
   .describe('port', 'Port to serve on')
   .number('port')
   .default('port', 3000)
+  .help('help')
   .alias('p', 'port')
   .alias('?', 'help')
   .argv;
