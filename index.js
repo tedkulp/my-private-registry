@@ -1,4 +1,3 @@
-const registry = require('./lib/file-registry');
 const server = require('./lib/server');
 const gc = require('./lib/file-gc');
 
@@ -28,6 +27,10 @@ const args = require('yargs')
   .describe('port', 'Port to serve on')
   .number('port')
   .default('port', 3000)
+
+  .describe('data', 'Directory to store data')
+  .default('data', __dirname)
+  .alias('d', 'data')
 
   .help('help')
   .alias('p', 'port')

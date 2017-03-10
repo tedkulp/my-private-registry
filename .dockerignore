@@ -1,5 +1,5 @@
 .git
 node_modules
-blobs/**
-manifests/**
-uploads/**
+blobs
+manifests
+uploads
