@@ -5,9 +5,6 @@ ADD . /code
 RUN npm install
 
 RUN mkdir /code/data
-RUN mkdir /code/data/blobs
-RUN mkdir /code/data/manifests
-RUN mkdir /code/data/uploads
 
 VOLUME /code/data
 

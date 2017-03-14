@@ -3,6 +3,9 @@
 # Test cleanup script. Change REGISTRY_URL to match.
 # It will remove all manifests older than 30 days.
 # Modify to suit taste.
+#
+# Make sure to run 'index.js gc' after this to remove
+# blobs from the registry
 
 from requests import get, delete
 import sys
