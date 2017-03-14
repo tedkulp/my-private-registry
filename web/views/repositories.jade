@@ -1,0 +1,8 @@
+table.table.table-striped.table-border
+  thead
+    tr
+      th Tag Name
+  tbody
+    tr(data-ng-repeat='repository in repositories')
+      td
+        a(href='/tags/{{ repository }}') {{ repository }}
