@@ -1,1 +1,43 @@
-<h1>Details</h1>
+h1 Image Details
+
+.row
+  .col-xs-2
+    p.text-right
+      strong Author
+  .col-xs-10
+    p {{ tag.details.author }}
+.row
+  .col-xs-2
+    p.text-right
+      strong Created
+  .col-xs-10
+    p {{ tag.details.created }}
+.row
+  .col-xs-2
+    p.text-right
+      strong Docker Version
+  .col-xs-10
+    p {{ tag.details.docker_version }}
+.row
+  .col-xs-2
+    p.text-right
+      strong OS/Arch
+  .col-xs-10
+    p {{ tag.details.os }}/{{ tag.details.architecture }}
+.row
+  .col-xs-2
+    p.text-right
+      strong Digest
+  .col-xs-10
+    p {{ tag.digest }}
+.row
+  .col-xs-2
+    p.text-right
+      strong Size (not including base images)
+  .col-xs-10
+    p {{ formatBytes(tag.size, 2) }}
+
+h2 Manifest
+
+pre
+  {{ tag | json }}

@@ -77,9 +77,28 @@ app.controller('DetailController', [
   '$state',
   'RepositoryService',
   function($scope, $state, RepositoryService) {
-    console.log('detail');
+    $scope.tag = {};
+
+    $scope.formatBytes = function(bytes,decimals) {
+      if(bytes == 0) return '0 Bytes';
+      var k = 1000,
+          dm = decimals || 3,
+          sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'],
+          i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    };
+
     RepositoryService.getManifest({repository: $state.params.repository, reference: $state.params.reference }).$promise.then(function(result) {
-      console.log(result);
+      $scope.tag.repository = $state.params.repository;
+      $scope.tag.reference = $state.params.reference;
+
+      if (result && result.schemaVersion && result.schemaVersion == 2) {
+        $scope.tag.digest = result.config.digest.substr(7, 8); // TODO: Fix me if we stop hardcoding sha256
+        $scope.tag.size = _.sumBy(result.layers, function(layer) { return layer.size; });
+        RepositoryService.getDetails({ repository: $scope.tag.repository, digest: result.config.digest }).$promise.then(function(result2) {
+          $scope.tag.details = result2;
+        });
+      }
     });
   }
 ]);
