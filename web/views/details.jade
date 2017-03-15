@@ -29,15 +29,20 @@ h1 Image Details
     p.text-right
       strong Digest
   .col-xs-10
-    p {{ tag.digest }}
+    p {{ tag.digest | limitTo: 12 }}
 .row
   .col-xs-2
     p.text-right
-      strong Size (not including base images)
+      strong Total Size
   .col-xs-10
     p {{ formatBytes(tag.size, 2) }}
 
 h2 Manifest
 
 pre
-  {{ tag | json }}
+  {{ tag.manifest | json }}
+
+h2 Config
+
+pre
+  {{ tag.details | json }}

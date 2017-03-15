@@ -8,8 +8,8 @@ table.table.table-striped.table-border
   tbody
     tr(data-ng-repeat='tag in tags')
       td
-        a(href='/details/{{ tag.repository }}/{{ tag.name }}') {{ tag.name }}
-      td {{ tag.digest }}
+        a(href='/details/{{ tag.repository }}/{{ tag.reference }}') {{ tag.reference }}
+      td {{ tag.digest | limitTo: 12 }}
       td(am-time-ago='tag.details.created')
       td {{ tag.details.author }}
       td {{ tag.details.docker_version }}

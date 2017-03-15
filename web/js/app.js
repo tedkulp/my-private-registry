@@ -39,36 +39,36 @@ app.controller('RepositoryController', [
   'RepositoryService',
   function($scope, RepositoryService) {
     $scope.repositories = [];
-    RepositoryService.getRepositories().$promise.then(function(repos) {
-      $scope.repositories = repos.repositories;
-    });
+    RepositoryService.getRepositories()
+      .$promise
+      .then(function(repos) {
+        $scope.repositories = repos.repositories;
+      });
   }
 ]);
 
 app.controller('TagController', [
   '$scope',
   '$state',
+  '$q',
   'RepositoryService',
-  function($scope, $state, RepositoryService) {
+  'ManifestService',
+  function($scope, $state, $q, RepositoryService, ManifestService) {
     $scope.tags = [];
-    RepositoryService.getTags({repository: $state.params.repository}).$promise.then(function(result) {
-      $scope.tags = _.map(result.tags, function(tag) {
-        return {
-          name: tag,
-          repository: $state.params.repository
-        };
-      });
-      _.each($scope.tags, function(tag) {
-        RepositoryService.getManifest({ repository: tag.repository, reference: tag.name }).$promise.then(function(result) {
-          if (result && result.schemaVersion && result.schemaVersion == 2) {
-            tag.digest = result.id.substr(7, 8); // TODO: Fix me if we stop hardcoding sha256
-            RepositoryService.getDetails({ repository: tag.repository, digest: result.config.digest }).$promise.then(function(result2) {
-              tag.details = result2;
+
+    RepositoryService.getTags({repository: $state.params.repository})
+      .$promise
+      .then(function(result) {
+        $q.all(_.map(result.tags, function(tag) {
+          return ManifestService.getManifest($state.params.repository, tag)
+            .then(function(data) {
+              return data;
             });
-          }
-        });
+        }))
+          .then(function(data) {
+            $scope.tags = data;
+          });
       });
-    });
   }
 ]);
 
@@ -76,7 +76,8 @@ app.controller('DetailController', [
   '$scope',
   '$state',
   'RepositoryService',
-  function($scope, $state, RepositoryService) {
+  'ManifestService',
+  function($scope, $state, RepositoryService, ManifestService) {
     $scope.tag = {};
 
     $scope.formatBytes = function(bytes,decimals) {
@@ -88,18 +89,44 @@ app.controller('DetailController', [
       return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
     };
 
-    RepositoryService.getManifest({repository: $state.params.repository, reference: $state.params.reference }).$promise.then(function(result) {
-      $scope.tag.repository = $state.params.repository;
-      $scope.tag.reference = $state.params.reference;
+    ManifestService.getManifest($state.params.repository, $state.params.reference)
+      .then(function(tag) {
+        $scope.tag = tag;
+      });
+  }
+]);
 
-      if (result && result.schemaVersion && result.schemaVersion == 2) {
-        $scope.tag.digest = result.id.substr(7, 8); // TODO: Fix me if we stop hardcoding sha256
-        $scope.tag.size = _.sumBy(result.layers, function(layer) { return layer.size; });
-        RepositoryService.getDetails({ repository: $scope.tag.repository, digest: result.config.digest }).$promise.then(function(result2) {
-          $scope.tag.details = result2;
+app.factory('ManifestService', [
+  'RepositoryService',
+  function(RepositoryService) {
+    var getManifest = function(repository, reference) {
+      var tag = {
+        repository: repository,
+        reference: reference
+      };
+
+      return RepositoryService.getManifest({repository: repository, reference: reference })
+        .$promise
+        .then(function(result) {
+          tag.manifest = result.data;
+
+          if (result.data && result.data.schemaVersion && result.data.schemaVersion == 2) {
+            tag.id = result.id;
+            tag.digest = result.id.substr(7); // TODO: Fix me if we stop hardcoding sha256
+            tag.size = _.sumBy(result.data.layers, function(layer) { return layer.size; });
+            return RepositoryService.getDetails({ repository: tag.repository, digest: result.data.config.digest })
+              .$promise
+              .then(function(result2) {
+                tag.details = result2;
+                return tag;
+              });
+          }
         });
-      }
-    });
+    };
+
+    return {
+      getManifest: getManifest
+    };
   }
 ]);
 
@@ -109,11 +136,16 @@ app.factory('RepositoryService', [
     return $resource('/v2/_catalog', {}, {
       getRepositories: { isArray: false },
       getTags: { url: '/v2/:repository/tags/list', isArray: false },
-      getManifest: { url: '/v2/:repository/manifests/:reference', isArray: false, transformResponse: function(data, headers) {
-        response = JSON.parse(data);
-        response.id = headers()['docker-content-digest'];
-        return response;
-      } },
+      getManifest: {
+        url: '/v2/:repository/manifests/:reference',
+        isArray: false,
+        transformResponse: function(data, headers) {
+          return {
+            data: JSON.parse(data),
+            id: headers()['docker-content-digest']
+          };
+        }
+      },
       getDetails: { url: '/v2/:repository/blobs/:digest', isArray: false }
     });
   }
