@@ -1,0 +1,15 @@
+table.table.table-striped.table-border
+  thead
+    th Tag
+    th Image ID
+    th Created
+    th Author
+    th Docker Version
+  tbody
+    tr(data-ng-repeat='tag in tags')
+      td
+        a(href='/details/{{ tag.repository }}/{{ tag.name }}') {{ tag.name }}
+      td {{ tag.digest }}
+      td(am-time-ago='tag.details.created')
+      td {{ tag.details.author }}
+      td {{ tag.details.docker_version }}

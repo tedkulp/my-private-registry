@@ -1,0 +1,16 @@
+html
+  head
+    title=title
+    script(src='//cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js')
+    script(src='//cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.min.js')
+    script(src='//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js')
+    script(src='//cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.1/angular.min.js')
+    script(src='//cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.1/angular-resource.min.js')
+    script(src='//cdnjs.cloudflare.com/ajax/libs/angular-ui-router/0.4.2/angular-ui-router.min.js')
+    script(src='//cdnjs.cloudflare.com/ajax/libs/moment.js/2.17.1/moment.min.js')
+    script(src='//cdnjs.cloudflare.com/ajax/libs/angular-moment/1.0.1/angular-moment.min.js')
+    script(src='/js/app.js')
+    link(href='//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css', rel='stylesheet')
+  body
+    div.container(data-ng-app='main')
+      ui-view
