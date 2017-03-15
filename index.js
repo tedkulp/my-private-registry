@@ -1,9 +1,11 @@
 const server = require('./lib/server');
 const gc = require('./lib/file-gc');
+const pkginfo = require('pkginfo')(module, 'version', 'author', 'description');
 
 const args = require('yargs')
   .usage('Usage: $0 [options]')
-  .version('Version 0.1')
+  .version()
+  .epilogue(module.exports.description + " from " + module.exports.author)
 
   .describe('http', 'Use http instead of https')
   .boolean('http')

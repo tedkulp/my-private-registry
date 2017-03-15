@@ -1,12 +1,12 @@
 {
-  "name": "simple-registry",
-  "version": "1.0.0",
-  "description": "",
+  "name": "my-private-registry",
+  "version": "0.1.0",
+  "description": "A simple, v2 compliant, local docker registry",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "Ted Kulp <ted@tedkulp.com>",
   "license": "ISC",
   "dependencies": {
     "bluebird": "^3.5.0",
@@ -15,6 +15,7 @@
     "glob": "^7.1.1",
     "jade": "^1.11.0",
     "lodash": "^4.17.4",
+    "pkginfo": "^0.4.0",
     "uuid": "^3.0.1",
     "yargs": "^7.0.1"
   }
