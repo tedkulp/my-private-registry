@@ -1,4 +1,4 @@
-FROM node:7
+FROM node:alpine
 
 WORKDIR /code
 ADD . /code
