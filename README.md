@@ -5,7 +5,7 @@ pull out your hair.
 
 ### Why?
 
-_*Doesn't the official registry already work just fine?*_ In theory, yes.
+_**Doesn't the official registry already work just fine?**_ In theory, yes.
 But it has issues. The docker registry in it's current form has a two
 priority use cases:
 
@@ -39,7 +39,7 @@ deicded to write my own instead.
 
 * Only works on the local filesystem
 * No authentication
-* Still has a few [https://github.com/tedkulp/my-private-registry/issues](issues)
+* Still has a few [issues](https://github.com/tedkulp/my-private-registry/issues)
 
 ### Usage
 
@@ -53,7 +53,7 @@ If you're storing your data in a directory on your server somewhere:
 
     docker run -d -p 80:3000 -v /path/to/data:/code/data --restart=always --name registry tedkulp/my-private-registry
     
-#### Envioronment Variables
+#### Environment Variables
 
 <dl>
   <dt>REGISTRY_USE_HTTP</dt>
@@ -71,3 +71,7 @@ To clean up any blobs that aren't being referenced, run this command. If you're 
 regulary, put it in a cron job.
 
     docker exec -it registry index.js gc -d /code/data
+
+### Contributing
+
+Please! Create some issues of stuff I'm missing. Submit a merge request if you can fix it. I'm open to any collaboration.
