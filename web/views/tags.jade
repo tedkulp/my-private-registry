@@ -5,6 +5,7 @@ table.table.table-striped.table-border
     th Created
     th Author
     th Docker Version
+    th
   tbody
     tr(data-ng-repeat='tag in tags')
       td
@@ -13,3 +14,5 @@ table.table.table-striped.table-border
       td(am-time-ago='tag.details.created')
       td {{ tag.details.author }}
       td {{ tag.details.docker_version }}
+      td
+        button.btn.btn-danger(type='button', data-confirmed-click='deleteTag(tag.repository, tag.reference, tag.id)', data-ng-confirm-click="Are you sure you want to delete this tag?") Delete

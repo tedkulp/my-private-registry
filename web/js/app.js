@@ -34,6 +34,22 @@ app.config([
   }
 ]);
 
+app.directive('ngConfirmClick', [
+  function(){
+    return {
+      link: function (scope, element, attr) {
+        var msg = attr.ngConfirmClick || "Are you sure?";
+        var clickAction = attr.confirmedClick;
+        element.bind('click',function (event) {
+          if ( window.confirm(msg) ) {
+            scope.$eval(clickAction);
+          }
+        });
+      }
+    };
+  }
+]);
+
 app.controller('RepositoryController', [
   '$scope',
   'RepositoryService',
@@ -56,19 +72,37 @@ app.controller('TagController', [
   function($scope, $state, $q, RepositoryService, ManifestService) {
     $scope.tags = [];
 
-    RepositoryService.getTags({repository: $state.params.repository})
-      .$promise
-      .then(function(result) {
-        $q.all(_.map(result.tags, function(tag) {
-          return ManifestService.getManifest($state.params.repository, tag)
+    $scope.deleteTag = function(repository, reference, id) {
+      console.log('delete', repository, reference, id);
+      RepositoryService.deleteManifest({repository: repository, id: id})
+        .$promise
+        .then(function(result) {
+          console.log('delete success', result);
+          loadTags();
+        })
+        .catch(function(err) {
+          console.err(err);
+        });
+    };
+
+    var loadTags = function() {
+      $scope.tags = [];
+      RepositoryService.getTags({repository: $state.params.repository})
+        .$promise
+        .then(function(result) {
+          $q.all(_.map(result.tags, function(tag) {
+            return ManifestService.getManifest($state.params.repository, tag)
+              .then(function(data) {
+                return data;
+              });
+          }))
             .then(function(data) {
-              return data;
+              $scope.tags = data;
             });
-        }))
-          .then(function(data) {
-            $scope.tags = data;
-          });
-      });
+        });
+    };
+
+    loadTags();
   }
 ]);
 
@@ -146,7 +180,8 @@ app.factory('RepositoryService', [
           };
         }
       },
-      getDetails: { url: '/v2/:repository/blobs/:digest', isArray: false }
+      getDetails: { url: '/v2/:repository/blobs/:digest', isArray: false },
+      deleteManifest: { url: '/v2/:repository/manifests/:id', method: 'delete' }
     });
   }
 ]);
