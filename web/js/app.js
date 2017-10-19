@@ -74,7 +74,7 @@ app.controller('TagController', [
 
     $scope.deleteTag = function(repository, reference, id) {
       console.log('delete', repository, reference, id);
-      RepositoryService.deleteManifest({repository: repository, id: id})
+      RepositoryService.deleteManifest({repository: repository, id: reference})
         .$promise
         .then(function(result) {
           console.log('delete success', result);
