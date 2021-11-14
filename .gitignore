@@ -37,3 +37,9 @@ testem.log
 # System Files
 .DS_Store
 Thumbs.db
+/blobs/*
+!/blobs/.gitkeep
+/manifests/*
+!/manifests/.gitkeep
+/uploads/*
+!/uploads/.gitkeep
