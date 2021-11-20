@@ -2,6 +2,7 @@
   "version": 2,
   "projects": {
     "api": "apps/api",
-    "client": "apps/client"
+    "client": "apps/client",
+    "shared-types": "libs/shared-types"
   }
 }

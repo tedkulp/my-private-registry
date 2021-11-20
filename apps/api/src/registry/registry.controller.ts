@@ -222,14 +222,14 @@ export class RegistryController {
               .end();
           })
           .catch((e) => {
-            console.log(e);
+            console.error(e);
             res.send(500).send('Error: See logs');
           });
       });
     });
 
     stream.on('error', (err) => {
-      console.log(err);
+      console.error(err);
       res.status(500).send('Error: See logs');
     });
 

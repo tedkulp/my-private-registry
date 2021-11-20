@@ -28,14 +28,18 @@ export function Index(props: IndexProps) {
   return (
     <>
       <h2>Repositories</h2>
-      <div>
-        {repositories &&
-          repositories.map((r) => (
-            <div key={r}>
-              <Link href={`/repositories/${r}`}>{r}</Link>
-            </div>
-          ))}
-      </div>
+      <table className="table table-hover">
+        <tbody>
+          {repositories &&
+            repositories.map((r) => (
+              <tr key={r}>
+                <td>
+                  <Link href={`/repositories/${r}`}>{r}</Link>
+                </td>
+              </tr>
+            ))}
+        </tbody>
+      </table>
     </>
   );
 }

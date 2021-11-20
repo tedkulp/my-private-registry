@@ -1,6 +1,11 @@
+import {
+  DockerDetails,
+  DockerManifest,
+} from '@my-private-registry/shared-types';
 import axios from 'axios';
+import { sum } from 'lodash';
+import moment from 'moment';
 import { NextPageContext } from 'next';
-// import Link from 'next/link';
 import { useState } from 'react';
 
 import styles from '../../index.module.scss';
@@ -13,15 +18,14 @@ export interface ReferenceDetailsProps {
   details: unknown;
   repository: string;
   reference: string;
+  totalSize: number;
 }
 
-const getData = async (url: string) => {
-  const result = axios
-    .get(url)
-    .then((resp) => resp.data)
+const getData = <T extends unknown>(url: string) => {
+  return axios
+    .get<T>(url)
+    .then((resp) => resp?.data || null)
     .catch((err) => console.error(err));
-
-  return result || null;
 };
 
 export function ReferenceDetails(props: ReferenceDetailsProps) {
@@ -34,11 +38,11 @@ export function ReferenceDetails(props: ReferenceDetailsProps) {
       <div className="row">
         <div className="col-2">
           <p className="text-right">
-            <strong>Author</strong>
+            <strong>Size</strong>
           </p>
         </div>
         <div className="col-10">
-          <p>{details['author'] || 'n/a'}</p>
+          <p>{props.totalSize || '0'}</p>
         </div>
       </div>
       <div className="row">
@@ -48,7 +52,11 @@ export function ReferenceDetails(props: ReferenceDetailsProps) {
           </p>
         </div>
         <div className="col-10">
-          <p>{details['created'] || 'n/a'}</p>
+          <p>
+            {details['created']
+              ? moment(details['created']).format('YYYY-MM-DD HH:mm:ss')
+              : 'n/a'}
+          </p>
         </div>
       </div>
       <div className="row">
@@ -96,9 +104,11 @@ export function ReferenceDetails(props: ReferenceDetailsProps) {
 
 export async function getServerSideProps(context: NextPageContext) {
   const manifestUrl = `http://localhost:3333/v2/${context.query.repository}/manifests/${context.query.id}`;
-  const manifest = await getData(manifestUrl);
-  const detailsUrl = `http://localhost:3333/v2/${context.query.repository}/blobs/${manifest.config.digest}`;
-  const details = await getData(detailsUrl);
+  const manifest = await getData<DockerManifest>(manifestUrl);
+  const detailsUrl = `http://localhost:3333/v2/${
+    context.query.repository
+  }/blobs/${manifest && manifest.config.digest}`;
+  const details = await getData<DockerDetails>(detailsUrl);
   return {
     props: {
       repository: context.query.repository,
@@ -107,6 +117,7 @@ export async function getServerSideProps(context: NextPageContext) {
       manifest,
       detailsUrl,
       details,
+      totalSize: manifest && sum(manifest.layers.map((layer) => layer.size)),
     },
   };
 }
