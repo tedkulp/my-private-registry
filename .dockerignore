@@ -1,0 +1,5 @@
+/node_modules
+/dist
+/manifests
+/blobs
+/uploads
