@@ -13,10 +13,12 @@ import {
   Put,
   Req,
   Res,
+  UseInterceptors,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { bind } from 'lodash';
 
+import { LockfileInterceptor } from '../lockfile/lockfile.interceptor';
 import { RegistryService } from './registry.service';
 
 @Controller('')
@@ -166,6 +168,7 @@ export class RegistryController {
   }
 
   @Put('/v2/:repository/manifests/:reference')
+  @UseInterceptors(LockfileInterceptor)
   async setManifest(@Req() req: Request, @Res() res: Response) {
     this.endpointDebug(req);
 
@@ -222,14 +225,14 @@ export class RegistryController {
               .end();
           })
           .catch((e) => {
-            console.error(e);
+            this.logger.error(e);
             res.send(500).send('Error: See logs');
           });
       });
     });
 
     stream.on('error', (err) => {
-      console.error(err);
+      this.logger.error(err);
       res.status(500).send('Error: See logs');
     });
 
@@ -237,6 +240,7 @@ export class RegistryController {
   }
 
   @Post('/v2/:repository/blobs/uploads/')
+  @UseInterceptors(LockfileInterceptor)
   generateUploadId(@Req() req: Request, @Res() res: Response) {
     this.endpointDebug(req);
 
@@ -256,6 +260,7 @@ export class RegistryController {
   }
 
   @Patch('/v2/:repository/blobs/uploads/:uuid')
+  @UseInterceptors(LockfileInterceptor)
   sendUpload(@Req() req: Request, @Res() res: Response) {
     this.endpointDebug(req);
 
@@ -299,6 +304,7 @@ export class RegistryController {
   }
 
   @Put('/v2/:repository/blobs/uploads/:uuid')
+  @UseInterceptors(LockfileInterceptor)
   finallizeUpload(@Req() req: Request, @Res() res: Response) {
     this.endpointDebug(req);
 
@@ -331,6 +337,7 @@ export class RegistryController {
   //
   // In this version, we try to delete the tag first, then fallback to the manifest SHA.
   @Delete('/v2/:repository/manifests/:reference')
+  @UseInterceptors(LockfileInterceptor)
   async deleteManifest(@Req() req: Request, @Res() res: Response) {
     this.endpointDebug(req);
 
@@ -373,6 +380,7 @@ export class RegistryController {
   // NOTE: This is not a documented API call. This is an optimization that I wish existed in the
   //       real API spec
   @Post('/v2/:repository/manifests/copy')
+  @UseInterceptors(LockfileInterceptor)
   async copyManifest(@Req() req: Request, @Res() res: Response) {
     this.endpointDebug(req);
 
